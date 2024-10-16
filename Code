@@ -1,0 +1,210 @@
+import mysql.connector
+from breezypythongui import EasyFrame
+import matplotlib.pyplot as plt
+
+
+class TaxCodeDemo(EasyFrame):
+
+    def __init__(self):
+        
+        EasyFrame.__init__(self, title="Tax Calculator")
+        self.income_data = []
+        self.addLabel(text="Enter your Annual Income", row=0, column=0)
+        self.incomeField = self.addFloatField(value=0.0, row=0, column=1)
+
+        self.addLabel(text="Enter Age", row=1, column=0)
+        self.exeField = self.addFloatField(value=0.0, row=1, column=1)
+
+        self.addLabel(text="Enter value 1 for calculating old tax slab and value 2 for calculating new tax slab", row=2, column=0)
+        self.depField = self.addIntegerField(value=0, row=2, column=1)
+
+        self.addLabel(text="Enter the file name", row=4, column=0)
+        self.fileNameField = self.addTextField(text="tax.txt", row=4, column=1)
+
+        self.addLabel(text="Enter the table name", row=5, column=0)
+        self.tableNameField = self.addTextField(text="tax_data", row=5, column=1)
+        
+        self.addButton(text = "Compute", row = 3, column = 0,
+                       columnspan = 2, command = self.computeTax)
+
+        self.addLabel(text="Total tax", row=6, column=0)
+        self.taxField = self.addFloatField(value=0.0, row=6, column=1, precision=2)
+        
+        self.addLabel(text="Generate Graph", row=7, column=0)
+        self.addButton(text="Generate", row=7, column=1, command=self.plot_tax_graph)
+
+
+        
+    def create_table(self, table_name):
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="SV_NANDAN@",
+            database="project"
+        )
+        cursor=conn.cursor()
+
+        cursor.execute("SHOW TABLES LIKE %s", (table_name,))
+        result = cursor.fetchone()
+
+        if result:
+            return None
+        else:
+            create_table_query = "CREATE TABLE " + table_name + " (id INT AUTO_INCREMENT PRIMARY KEY, income FLOAT, age FLOAT, tax FLOAT)"
+            cursor.execute(create_table_query)
+
+            cursor.close()
+            conn.close()
+
+    def computeTax(self):
+        income = self.incomeField.getNumber()
+        numDependents = self.depField.getNumber()
+        exemptionAmount = self.exeField.getNumber()
+        a1 = income
+        a2 = 0
+        a3 = 0
+        tax = 0
+
+        if exemptionAmount <= 59:        
+           
+            if numDependents == 1:
+                if a1 > 0 and a1 <= 250000:
+                    tax = 0
+                elif a1 >= 250000 and a1 <= 500000:
+                    a2 = (0.05 * (a1 - 250000))
+                    a3 = ((a2 * 0.04) + a2)
+                    tax = a3
+                elif a1 >= 500000 and a1 <= 750000:
+                    a2 = (12500 + (0.1 * (a1 - 250000)))
+                    a3 = ((a2 * 0.04) + a2)
+                    tax = a3
+                elif a1 >= 750000 and a1 <= 1000000:
+                    a2 = (25000 + (0.15 * (a1 - 250000)))
+                    a3 = ((a2 * 0.04) + a2)
+                    tax = a3
+                elif a1 >= 1000000 and a1<= 1250000:
+                    a2 = (37500 + (0.2 * (a1 - 250000)))
+                    a3 = ((a2 * 0.04) + a2)
+                    tax = a3
+                elif 1 >= 1250000 and a1 <= 1500000:
+                    a2 = (50000 + +(0.25 * (a1 - 25000)))
+                    a3 = ((a2 * 0.04) + a2)
+                    tax = a3
+                else:
+                    if a1 >= 1500000:
+                        a2 = (62500 + (0.3 * (a1 - 25000)))
+                        a3 = ((a2 * 0.04) + a2)
+                        tax = a3
+            else:    
+                if numDependents == 2:
+                    if a1 <= 250000:  
+                        tax = 0
+                    elif a1 <= 500000:
+                        tax = (a1 - 250000) * 0.05
+                    elif a1 <= 750000:
+                        tax = (a1 - 500000) * 0.10 + 12500
+                    elif a1 <= 1000000:
+                        tax = (a1 - 750000) * 0.15 + 37500
+                    elif a1 <= 1250000:  
+                        tax = (a1 - 1000000) * 0.20 + 75000
+                    elif a1 <= 1500000:
+                        tax = (a1 - 1250000) * 0.25 + 125000
+                    else:
+                        tax = (a1 - 1500000) * 0.30 + 187500
+                       
+        elif exemptionAmount>= 60 and exemptionAmount <= 79:
+            if numDependents == 1 or numDependents == 2:
+                if a1 <= 300000:
+                    tax = 0
+                elif a1 <= 500000:
+                    tax = (a1 - 300000) * 0.05
+                elif a1 <= 1000000:
+                    tax = (a1 - 500000) * 0.20 + 10000
+                else:
+                    tax = (a1 - 1000000) * 0.30 + 110000
+   
+        elif exemptionAmount >= 80:
+            if numDependents == 1 or numDependents == 2:
+                if a1 <= 500000:
+                    tax = 0
+                elif a1 <= 1000000:
+                    tax = (a1 - 500000) * 0.20
+                else:
+                    tax = (a1 - 1000000) * 0.30 + 1000000
+                    
+                    
+        tax_data = {'income': income, 'tax': tax}
+
+        # Append the dictionary to the list
+        self.income_data.append(tax_data)
+
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="SV_NANDAN@",
+            database="project"
+        )
+        conn.cursor()
+        
+
+                    
+        file_name = self.fileNameField.getText()
+
+                # Prompt the user for the table name
+        table_name = self.tableNameField.getText()
+
+        # Create the table with the provided name
+        self.create_table(table_name)
+
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="SV_NANDAN@",
+            database="project"
+        )
+
+        cursor = conn.cursor()
+
+        # Insert data into the specified table
+        query = "INSERT INTO " + table_name + " (income, age, tax) VALUES (%s, %s, %s)"
+        values = (income, exemptionAmount, tax)
+        cursor.execute(query, values)
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+
+
+        # Save the data to the specified file and MySQL
+        tax_data = {'income': income, 'age': exemptionAmount, 'tax': tax}
+        self.save_to_file(file_name, tax_data)
+
+        self.taxField.setNumber(tax)
+
+
+        
+    def plot_tax_graph(self):
+        incomes = [data['income'] for data in self.income_data]
+        taxes = [data['tax'] for data in self.income_data]
+
+        plt.figure(figsize=(8, 6))
+        plt.bar(range(len(incomes)), taxes, color='blue', alpha=0.7, align='center')
+        plt.xticks(range(len(incomes)), incomes)
+        plt.xlabel('Income')
+        plt.ylabel('Tax')
+        plt.title('Income vs. Tax')
+        plt.grid(True)
+        plt.show()
+
+
+
+
+    def save_to_file(self, file_name, data):
+        with open(file_name, "a") as file:
+            file.write("Income: " + str(data['income']) + ", Age: " + str(data['age']) + ", Tax: " + str(data['tax']) + "\n")
+
+
+# Instantiate and pop up the window
+window = TaxCodeDemo()
+window.mainloop()
